@@ -1,0 +1,625 @@
+---
+title: "GEodata"
+author: "Phon Sophea"
+date: "7/4/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Geometry types 
+library(sf)
+install.packages("sf")
+install.packages("raster")
+install.packages("spData")
+devtools::install_github("Nowosad/spDataLarge")
+```
+
+```{r}
+library(sf)
+library(raster)
+library(spData)
+library(sp)
+```
+
+```{r}
+library(sp)
+world_sp = as(world, Class = "Spatial")
+world_sf <- st_as_sf(world_sp, "sf")
+```
+
+```{r}
+plot(world)
+plot(world$geom) # this called geometry that refers to the spatial element of the world object or geometric cols
+plot(world[3:6])
+plot(world["pop"])
+```
+```{r}
+summary(world$lifeExp)
+world_mini = world[1:2, 1:3]
+world_mini
+
+```
+
+```{r}
+world_asia <- world[world$continent == "Asia", ]
+asia = st_union(world_asia)
+plot(world["pop"], reset = FALSE)
+plot(asia, add = TRUE, col = "red")
+```
+
+## Base plot argument
+
+```{r}
+world_europe <- world[world$continent == "Europe", ]
+europe <- st_union(world_europe)
+plot(world["pop"], reset = FALSE)
+plot(europe, add = TRUE, col = "red")
+
+```
+
+```{r}
+library(sp)
+world_sp = as(world, Class = "Spatial")
+world_sf = st_as_sf(world_sp, "sf")
+```
+
+## Basic making map
+
+```{r}
+world_asia <- world[world$continent == "Asia",]
+asia <- st_union(world_asia)
+plot(world["pop"], reset = FALSE)
+plot(asia, add = TRUE, col = "red")
+```
+
+```{r}
+plot(world["continent"], reset = FALSE)
+cex = sqrt(world$pop)/10000
+world_cents = st_centroid(world, of_largest = TRUE)
+plot(st_geometry(world_cents), add = TRUE, cex = cex)
+# st_centriod() converts one geometry types (polygons) to another points
+#cex: aesthetics
+```
+
+```{r}
+india <- world[world$name_long == "India",]
+plot(st_geometry(india), expandBB = c(0,0.2, 0.1, 1), col = "grey", lwd = 3)
+plot(world_asia[0], add = TRUE)
+```
+
+```{r}
+#Simple Feature Geometry
+st_point(c(5,2)) # XY point (2D)
+st_point(c(5,4,3)) # XYZ point (3D)
+st_point(c(5,2,3), dim = "XYM") # xym point
+st_point(c(5,2,3,1)) # xyzm point (3D + accuracy)
+```
+
+```{r}
+multipoint_matrix <- rbind(c(5, 2), c(1, 3), c(3, 4), c(3, 2))
+st_multipoint(multipoint_matrix)
+linestring_matrix <- rbind(c(1, 5), c(4, 4), c(4, 1), c(2,2), c(3, 2))
+st_linestring(linestring_matrix)
+```
+
+```{r}
+polygon_list <- list(rbind(c(1, 5), c(2, 2), c(4, 1), c(4, 4), c(1, 5)))
+st_polygon(polygon_list)
+#Polygon with a hole
+polygon_border <- rbind(c(1, 5), c(2, 2), c(4, 1), c(4, 4), c(1, 5))
+polygon_hole <- rbind(c(2, 4), c(c(3, 4), c(3, 3), c(2, 3), c(2, 4)))
+polygon_with_hole_list = list(polygon_border, polygon_hole)
+st_polygon(polygon_with_hole_list)
+multilinestring_list = list(rbind(c(1, 5), c(4, 4), c(4, 1), c(2, 2), c(3, 2)),
+rbind(c(1, 2), c(2, 4)))
+st_multilinestring((multilinestring_list))
+multipolygon_list = list(list(rbind(c(1, 5), c(2, 2), c(4, 1), c(4, 4), c(1, 5))),
+list(rbind(c(0, 2), c(1, 2), c(1, 3), c(0, 3), c(0, 2))))
+st_multipolygon(multipolygon_list)
+gemetrycollection_list = list(st_multipoint(multipoint_matrix),
+st_linestring(linestring_matrix))
+st_geometrycollection(gemetrycollection_list)
+```
+
+
+```{r}
+polygon_list1 = list(rbind(c(1, 5), c(2, 2), c(4, 1), c(4, 4), c(1, 5)))
+polygon1 = st_polygon(polygon_list1)
+polygon_list2 = list(rbind(c(0, 2), c(1, 2), c(1, 3), c(0, 3), c(0, 2)))
+polygon2 = st_polygon(polygon_list2)
+polygon_sfc = st_sfc(polygon1, polygon2)
+st_geometry_type(polygon_sfc)
+```
+
+
+```{r}
+# sfc MULTILINESTRING
+multilinestring_list1 = list(rbind(c(1, 5), c(4, 4), c(4, 1), c(2, 2), c(3, 2)),
+rbind(c(1, 2), c(2, 4)))
+multilinestring1 = st_multilinestring((multilinestring_list1))
+multilinestring_list2 = list(rbind(c(2, 9), c(7, 9), c(5, 6), c(4, 7), c(2, 7)),
+rbind(c(1, 7), c(3, 8)))
+multilinestring2 = st_multilinestring((multilinestring_list2))
+multilinestring_sfc = st_sfc(multilinestring1, multilinestring2)
+st_geometry_type(multilinestring_sfc)
+
+```
+
+
+```{r}
+# sfc GEOMETRY
+point_multilinestring_sfc = st_sfc(point1, multilinestring1)
+st_geometry_type(point_multilinestring_sfc)
+```
+
+
+```{r}
+# EPSG definition
+points_sfc_wgs = st_sfc(point1, point2, crs = 4326)
+st_crs(points_sfc_wgs)
+# PROJ4STRING definition
+st_sfc(point1, point2, crs = "+proj=longlat +datum=WGS84 +no_defs")
+```
+
+## The sf class
+
+```{r}
+lnd_point <- st_point(c(-0.1, 51.5)) # sfg object
+lnd_geom <- st_sfc(lnd_point, crs = 4326) # sfc object
+lnd_attrib <- data.frame(
+  name = "London",
+  temperature = 25, 
+  date = as.Date("27-06-21") # data.frame object
+)
+lnd_sf <- st_sf(lnd_attrib, 
+                geometry = lnd_geom)
+lnd_sf
+class(lnd_sf)
+
+```
+## Raster
+
+```{r}
+raster_filepath <- system.file("raster/srtm.tif", package = "spDataLarge") # data in raster package
+new_raster <- raster(raster_filepath)
+dim(new_raster)
+ncell(new_raster)
+res(new_raster)
+extent(new_raster)
+crs(new_raster)
+inMemory(new_raster)
+help("raster-package")
+```
+
+## basic map
+```{r}
+plot(new_raster)
+```
+
+## Raster class 
+```{r}
+raster_filepath <- system.file("raster/srtm.tif", package = "spDataLarge")
+new_raster <- raster(raster_filepath)
+```
+
+```{r}
+new_raster2 <- raster(nrows = 6, 
+                      ncol = 6, 
+                      res = .5,
+                      xmn = -1.5,
+                      xmx = 1.5, 
+                      ymn = -1.5, 
+                      ymx = 1.5,
+                      vals = 1:36
+                      )
+new_raster2
+
+```
+
+```{r}
+multi_raster_file <- system.file("raster/landsat.tif", package = "spDataLarge")
+r_brick <- brick(multi_raster_file)
+r_brick
+nlayers(r_brick)
+```
+
+```{r}
+raster_on_disk = raster(r_brick, layer = 1)
+raster_in_memory = raster(xmn = 301905, xmx = 335745,
+ymn = 4111245, ymx = 4154085,
+res = 30)
+values(raster_in_memory) = sample(seq_len(ncell(raster_in_memory)))
+crs(raster_in_memory) = crs(raster_on_disk)
+r_stack = stack(raster_in_memory, raster_on_disk)
+r_stack
+```
+
+## Coordinate Reference Systems
+```{r}
+crs_data <- rgdal::make_EPSG()
+View(crs_data)
+```
+
+```{r}
+vector_filepath = system.file("vector/zion.gpkg", package = "spDataLarge")
+new_vector = st_read(vector_filepath)
+```
+
+```{r}
+st_crs(new_vector) # get crs
+new_vector <- set_set_crs(new_vector, 4326) #set CRS
+projection(new_raster) # get CRS
+projection(new_raster)
+```
+
+## Units
+```{r}
+luxembourg <- world[world$name_long == " Luxembourg", ]
+st_area(luxembourg)
+st_area(luxembourg)/1000000
+units::set_units(st_area(luxembourg), km^2)
+res(new_raster)
+repr <- projectRaster(new_raster, crs = " +init = epsg::2691")
+```
+
+
+```{r}
+summary(world)
+```
+
+
+#Unit3: Attribute Data Operation
+
+```{r}
+library(sf)
+library(raster)
+library(dplyr)
+library(stringr) # for working with string
+library(spData)
+```
+
+```{r}
+methods(class = "sf")
+st_sf(data.frame(n = world$name_long), g = world$geom)
+```
+
+```{r}
+world_df <- st_drop_geometry(world) # removing geometry data
+world1 <- dplyr::select(world, name_long, pop)
+names(world1)
+world2 <- dplyr::select(world, name_long:pop)
+world3 <- dplyr::select(world, -subregion, -area_km2)
+world4 <- dplyr::select(world, name_long, population = pop)
+names(world4)
+world5 <- world[, c("name_long", "pop")] # subset columns by name 
+names(world5)[names(world5) == "pop"] = "population"
+
+```
+
+```{r}
+# create throw-away data frame
+d <- data.frame(pop = 1:10, area = 1:10)
+d[, "pop", drop = FALSE]
+pull(d, pop)
+slice(world, 3:5) #row-equivalent of select()
+```
+
+```{r}
+world6 = filter(world, lifeExp > 82)
+world6 = filter(world, lifeExp > 82)
+world8 = slice(
+dplyr::select(
+filter(world, continent == "Asia"),
+name_long, continent),
+1:5)
+```
+
+```{r}
+world_agg1 = aggregate(pop ~ continent, FUN = sum, data = world, na.rm = TRUE)
+class(world_agg1)
+world_agg2 <- aggregate(world["pop"], by = list(world$continent), FUN = sum, na.rm = TRUE)
+world_agg2
+```
+
+
+```{r}
+world_agg3 = world %>%
+group_by(continent) %>%
+summarize(pop = sum(pop, na.rm = TRUE))
+world %>%
+summarize(pop = sum(pop, na.rm = TRUE), n = n())
+```
+
+```{r}
+world %>%
+dplyr::select(pop, continent) %>%
+group_by(continent) %>%
+summarize(pop = sum(pop, na.rm = TRUE), n_countries = n()) %>%
+top_n(n = 3, wt = pop) %>%
+st_drop_geometry() #The most populous conti.
+```
+
+```{r}
+world_coffee = left_join(world, coffee_data)
+#> Joining, by = ”name_long”
+class(world_coffee)
+coffee_renamed = rename(coffee_data, nm = name_long)
+world_coffee2 = left_join(world, coffee_renamed, by = c(name_long = "nm"))
+world_coffee_inner = inner_join(world, coffee_data)
+#> Joining, by = ”name_long”
+nrow(world_coffee_inner)
+setdiff(coffee_data$name_long, world$name_long)
+#> [1] ”Congo, Dem. Rep. of” ”Others”
+#str_subset(world$name_long, ”Dem*.+Congo”)
+coffee_data$name_long[grepl("Congo,", coffee_data$name_long)] =
+str_subset(world$name_long, "Dem*.+Congo")
+world_coffee_match = inner_join(world, coffee_data)
+#> Joining, by = ”name_long”
+nrow(world_coffee_match)
+coffee_world = left_join(coffee_data, world)
+#> Joining, by = ”name_long”
+class(coffee_world)
+st_as_sf(coffee_world)
+```
+
+```{r}
+world_new = world # do not overwrite our original data
+world_new$pop_dens = world_new$pop / world_new$area_km2
+world %>%
+mutate(pop_dens = pop / area_km2)
+world %>%
+transmute(pop_dens = pop / area_km2)
+world_unite = world %>%
+unite("con_reg", continent:region_un, sep = ":", remove = TRUE)
+world_separate = world_unite %>%
+separate(con_reg, c("continent", "region_un"), sep = ":")
+new_names = c("i", "n", "c", "r", "s", "t", "a", "p", "l", "gP", "geom")
+world %>%
+set_names(new_names)
+world_data = world %>% st_drop_geometry()
+class(world_data)
+```
+
+```{r}
+elev = raster(nrows = 6, ncols = 6, res = 0.5,
+xmn = -1.5, xmx = 1.5, ymn = -1.5, ymx = 1.5,
+vals = 1:36)
+```
+
+## Create attributes and removing spatial information
+
+```{r}
+grain_order = c("clay", "silt", "sand")
+grain_char = sample(grain_order, 36, replace = TRUE)
+grain_fact = factor(grain_char, levels = grain_order)
+grain = raster(nrows = 6, ncols = 6, res = 0.5,
+xmn = -1.5, xmx = 1.5, ymn = -1.5, ymx = 1.5,
+vals = grain_fact)
+levels(grain)[[1]] = cbind(levels(grain)[[1]], wetness = c("wet", "moist", "dry"))
+levels(grain)
+```
+
+```{r}
+levels(grain)[[1]] = cbind(levels(grain)[[1]], wetness = c("wet", "moist", "dry"))
+levels(grain)
+```
+
+### Raster subsetting
+
+```{r}
+elev = raster(nrows = 6, ncols = 6, res = 0.5,
+xmn = -1.5, xmx = 1.5, ymn = -1.5, ymx = 1.5,
+vals = 1:36)
+elev[1,1]
+elev[]
+```
+
+# Spatial data operation 
+
+```{r}
+library(sf)
+library(raster)
+library(dplyr)
+library(spData)
+```
+
+## Spatial subseting
+
+```{r}
+canterbury <- nz %>%
+  filter(Name == "Canterbury")
+canterbury_height <- nz_height[canterbury_height, ]
+nz_height[canterbury, , op = st_disjoint]
+
+sel_sgbp <- st_intersects(x = nz_height, y = canterbury)
+class(sel_sgbp)
+sel_logical = lengths(sel_sgbp) > 0
+canterbury_height2 = nz_height[sel_logical, ]
+canterbury_height3 = nz_height %>%
+filter(st_intersects(x = ., y = canterbury, sparse = FALSE))
+```
+
+### Topological Relations
+
+```{r}
+#create a polygon
+a_polygon <- st_polygon(list(rbind(c(-1, -1), c(1, -1), c(1, 1), c(-1, -1))))
+a = st_sfc(a_polygon)
+
+#create a line 
+l_line <- st_linestring(x = matrix(c(-1, -1, -0.5, 1), ncol = 2))
+l = st_sfc(l_line)
+
+#create points
+p_matrix <- matrix(c(0.5, 1, -1, 0, 0, 1, 0.5, 1), ncol = 2)
+p_malti <- st_multipoint(x = p_matrix)
+p = st_cast(st_sfc(p_malti), "POINT")
+st_intersects(p, a)
+st_intersects(p, a, sparse = FALSE)
+st_disjoint(p, a, sparse = FALSE)[, 1]
+st_disjoint(p, a, sparse = FALSE)[, 1]
+st_touches(p, a, sparse = FALSE)[, 1]
+sel = st_is_within_distance(p, a, dist = 0.9) # can only return a sparse matrix
+lengths(sel) > 0
+
+```
+
+```{r}
+sel_sgbp <- st_intersects(x = nz_height, 
+                          y = canterbury)
+sel_sgbp
+
+polygon_matrix = cbind(
+  x = c(0, 0, 1, 1,   0),
+  y = c(0, 1, 1, 0.5, 0)
+)
+polygon_sfc =
+  st_sfc(st_polygon(list(polygon_matrix)))
+```
+
+
+```{r}
+line_sfc = st_sfc(st_linestring(cbind(
+  x = c(0.4, 1),
+  y = c(0.2, 0.5)
+)))
+```
+
+
+```{r}
+# create points
+point_df = data.frame(
+  x = c(0.2, 0.7, 0.4),
+  y = c(0.1, 0.2, 0.8)
+)
+point_sf = st_as_sf(point_df, coords = c("x", "y"))
+```
+
+```{r}
+xy2sfc = function(x, y) st_sfc(st_polygon(list(cbind(x, y))))
+x = xy2sfc(x = c(0, 0, 1, 1,   0), y = c(0, 1, 1, 0.5, 0))
+y = xy2sfc(x = c(0.7, 0.7, 0.9, 0.7), y = c(0.8, 0.5, 0.5, 0.8))
+st_relate(x, y)
+
+```
+
+### DE-gIM string
+
+```{r}
+st_queen = function(x, y) st_relate(x, y, pattern = "F***T****")
+st_rook = function(x, y) st_relate(x, y, pattern = "F***1****")
+grid = st_make_grid(x, n = 3)
+grid_sf = st_sf(grid)
+grid_sf$queens = lengths(st_queen(grid, grid[5])) > 0
+plot(grid, col = grid_sf$queens)
+grid_sf$rooks = lengths(st_rook(grid, grid[5])) > 0
+plot(grid, col = grid_sf$rooks)
+```
+
+### Spatial joining
+
+```{r}
+set.seed(2018) # set seed for reproducibility
+(bb = st_bbox(world)) # the world's bounds
+
+random_df = data.frame(
+  x = runif(n = 10, min = bb[1], max = bb[3]),
+  y = runif(n = 10, min = bb[2], max = bb[4])
+)
+
+random_points = random_df |> 
+  st_as_sf(coords = c("x", "y")) |> # set coordinates
+  st_set_crs("EPSG:4326") # set geographic CRS
+world_random <- world[random_points,]
+```
+
+```{r}
+plot(st_geometry(cycle_hire), col = "blue") # points 
+plot(st_geometry(cycle_hire_osm), add = TRUE, pch = 3, col = "red")
+```
+```{r}
+# check the same point 
+any(st_touches(cycle_hire, cycle_hire_osm, sparse = FALSE))
+```
+
+```{r}
+sel = st_is_within_distance(cycle_hire, cycle_hire_osm, dist = units::set_units(20, "m"))
+summary(lengths(sel) > 0)
+```
+
+```{r}
+z = st_join(cycle_hire, cycle_hire_osm,
+            st_is_within_distance, 
+            dist = units::set_units(20, "m"))
+nrow(cycle_hire)
+```
+
+```{r}
+nz_agg = aggregate(x = nz_height, by = nz, FUN = mean)
+identical(st_geometry(nz), st_geometry(nz_agg))
+```
+
+```{r}
+nz_agg2 <- st_join(x = nz,
+                   y = nz_height)|> 
+  group_by(Name)|> 
+  summarize(elevation = 
+              mean(elevation, 
+                   na.rm = TRUE))
+```
+
+### Clipping
+
+```{r}
+b = st_sfc(st_point(c(0, 1)), st_point(c(1, 1)))
+b = st_buffer(b, dist = 1)
+plot(b)
+text(x = c(-0.5, 1.5), y = 1, labels = c("X", "Y"))
+```
+
+```{r}
+x = b[1]
+y = b[2]
+x_and_y = st_intersection(x, y)
+plot(b)
+plot(x_and_y, col = "lightgrey", add = T)
+```
+
+```{r}
+plot(st_difference(x, y), col = "lightgrey")
+plot(st_union(x, y), col = "lightgrey")
+plot(st_intersection(x, y), col = "lightgrey")
+plot(st_sym_difference(x, y), col = "lightgrey")
+bb = st_bbox(st_union(x, y))
+box = st_as_sfc(bb)
+p = st_sample(x = box, size = 10)
+```
+
+
+```{r}
+plot(box)
+plot(x, add = T)
+plot(y, add = T)
+plot(p, add = T)
+text(x = c(-.5, 1.5), y =1, labels = c("x", "y"))
+sel_p_xy = st_intersection(p, x, sparse = FALSE)[, 1] &
+  st_intersection(p, y, sparse  = FALSE)[, 1]
+p_xy1 <- p[sel_p_xy]
+p_xy2 <- p[x_and_y]
+identical(p_xy1, p_xy2)
+```
+
+### Geometry unions
+
+
+
+
+
+
+
+
+
